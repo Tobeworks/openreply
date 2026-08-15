@@ -727,7 +727,19 @@ export async function getLongLivedToken(
   url.searchParams.set("access_token", shortLivedToken);
 
   const response = await fetch(url.toString());
-  const data = await handleResponse<TokenResponse>(response);
+
+  let data: TokenResponse;
+  try {
+    data = await handleResponse<TokenResponse>(response);
+  } catch (err) {
+    // Manche Konten liefern schon beim Code-Tausch einen langlebigen Token.
+    // ig_exchange_token lehnt den dann mit code=100 ("Unsupported request")
+    // ab — der Refresh-Endpunkt nimmt ihn und gibt ebenfalls 60 Tage zurück.
+    if (err instanceof PermissionError) {
+      return refreshLongLivedToken(shortLivedToken);
+    }
+    throw err;
+  }
 
   return {
     accessToken: data.access_token,
