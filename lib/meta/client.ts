@@ -130,7 +130,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     try {
       path = ` (${new URL(response.url).pathname})`;
     } catch {}
-    const message = `${err?.message ?? "Unknown Meta API error"}${path}`;
+    const message = `${err?.message ?? "Unknown Meta API error"}${path} [code=${code} sub=${subcode ?? "-"} type=${err?.type ?? "-"} trace=${traceId ?? "-"}]`;
 
     switch (code) {
       case 190:
