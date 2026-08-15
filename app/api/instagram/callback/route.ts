@@ -43,10 +43,30 @@ export async function GET(request: NextRequest) {
 
   try {
     const redirectUri = `${baseUrl}/api/instagram/callback`;
-    const { accessToken: shortLivedToken } = await exchangeCodeForToken(
-      code,
-      redirectUri
-    );
+    const {
+      accessToken: shortLivedToken,
+      userId: exchangedUserId,
+      permissions,
+    } = await exchangeCodeForToken(code, redirectUri);
+    // Diagnose: Token-Präfix und Scopes unterscheiden ein Instagram-Login-Token
+    // (IGAA…) von einem Facebook-Token (EAA…). Kein Token-Wert, nur die ersten
+    // vier Zeichen.
+    await prisma.operationalEvent
+      .create({
+        data: {
+          source: "SYSTEM",
+          level: "INFO",
+          workspaceId: state.workspaceId,
+          message: "Instagram code exchange",
+          payload: {
+            tokenPrefix: shortLivedToken?.slice(0, 4) ?? null,
+            tokenLength: shortLivedToken?.length ?? 0,
+            userId: exchangedUserId,
+            permissions: permissions ?? null,
+          },
+        },
+      })
+      .catch(() => {});
     const { accessToken: longLivedToken, expiresIn } =
       await getLongLivedToken(shortLivedToken);
     const userInfo = await getUserInfo(longLivedToken);
