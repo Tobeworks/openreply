@@ -116,7 +116,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
     const code = err?.code ?? response.status;
     const subcode = err?.error_subcode;
     const traceId = err?.fbtrace_id;
-    const message = err?.message ?? "Unknown Meta API error";
+    // Ohne den Pfad ist eine Meta-Fehlermeldung nicht zuzuordnen — mehrere
+    // Aufrufe hintereinander liefern denselben Text. Query wird verworfen,
+    // dort steht das access_token drin.
+    let path = "";
+    try {
+      path = ` (${new URL(response.url).pathname})`;
+    } catch {}
+    const message = `${err?.message ?? "Unknown Meta API error"}${path}`;
 
     switch (code) {
       case 190:
