@@ -736,7 +736,18 @@ export async function getLongLivedToken(
     // ig_exchange_token lehnt den dann mit code=100 ("Unsupported request")
     // ab — der Refresh-Endpunkt nimmt ihn und gibt ebenfalls 60 Tage zurück.
     if (err instanceof PermissionError) {
-      return refreshLongLivedToken(shortLivedToken);
+      try {
+        return await refreshLongLivedToken(shortLivedToken);
+      } catch (refreshErr) {
+        // Auch der Refresh lehnt ab: ig_refresh_token verlangt einen Token, der
+        // mindestens 24h alt ist. Beide Wege versperrt heißt, der Token aus dem
+        // Code-Tausch ist bereits der langlebige — also unverändert übernehmen.
+        // Der nächtliche Cron erneuert ihn später regulär.
+        if (refreshErr instanceof PermissionError) {
+          return { accessToken: shortLivedToken, expiresIn: 5184000 };
+        }
+        throw refreshErr;
+      }
     }
     throw err;
   }
